@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Energy Dashboard</title>
+<link rel="stylesheet" href="http://www.w3schools.com/lib/w3.css">
+<style>
+body  {background-color:lightgrey;}
+h1    {color:blue;}
+table, tr, th, td {
+    border: 1px solid black;
+}
+p     {color:green;}
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.1.2/Chart.bundle.js"></script>
+<script>
+DATA_URL = "http://192.168.0.154:9999/data";
+
+$(document).ready(function(){
+    $.getJSON(DATA_URL, function(result){
+        $.each(result, function(i, jsonObject){
+            createItem(jsonObject['device_name'], jsonObject['data']);
+        });
+    });
+});
+
+function createItem(name, data) {
+    var div = document.createElement("div");
+    var headerName = document.createElement("h1");
+    headerName.innerHTML  = name;
+    div.appendChild(headerName);
+
+    var content = document.createElement("div");
+    var latestData = data[0];
+    
+    var powerField = document.createElement("p");
+    powerField.innerHTML = "Current Power: " + Math.round((latestData['current_power'])/1000) + "W";
+    content.appendChild(powerField);
+
+    var todayWHField = document.createElement("p");
+    todayWHField.innerHTML = "Today Energy: " + Math.round(latestData['today_kwh']*1000) + "W-H";
+    content.appendChild(todayWHField);
+
+    var dateField = document.createElement("p");
+    var dateInput = latestData['date'] * 1000;
+    var dateObject = new Date(dateInput);
+    dateField.innerHTML = "Last Updated: " + dateObject.toLocaleString();
+    content.appendChild(dateField);
+
+    div.appendChild(content);
+
+    var toggleButton = document.createElement("button"); 
+    var buttonText = document.createTextNode("Show history"); 
+    toggleButton.appendChild(buttonText);
+    toggleButton.onclick = function(){toggleTable(name)};
+    div.appendChild(toggleButton);
+   
+    var table = document.createElement("table");
+    table.id = name
+    table.style.display = "table";
+    var tableHeader = document.createElement("tr");
+    
+    var powerHeader = document.createElement("th")
+    powerHeader.innerHTML = "(W)";
+    tableHeader.appendChild(powerHeader);
+
+    var energyHeader = document.createElement("th")
+    energyHeader.innerHTML = "(W-H)";
+    tableHeader.appendChild(energyHeader);
+
+    var dateHeader = document.createElement("th")
+    dateHeader.innerHTML = "Date";
+    tableHeader.appendChild(dateHeader);
+
+    table.appendChild(tableHeader);
+
+    for (i = 0; i < data.length; i++) { 
+        pointData = data[i];
+        var tableRow = document.createElement("tr");
+        tableRow.insertCell(0).innerHTML = Math.round((pointData['current_power'])/1000);
+        tableRow.insertCell(1).innerHTML = Math.round(pointData['today_kwh']*1000);
+        tableRow.insertCell(2).innerHTML = (new Date(pointData['date'] * 1000)).toLocaleString();
+        table.appendChild(tableRow);
+    }
+    div.appendChild(table);
+    div.setAttribute('class', 'w3-third');
+ 
+    var main = document.getElementById("main");
+    main.appendChild(div);
+}
+
+function toggleTable(tableId) {
+    var myTable = document.getElementById(tableId);
+    myTable.style.display = (myTable.style.display == "table") ? "none" : "table";
+}
+</script>
+</head>
+
+<body>
+  <div id="main"></div>
+</body>
+
+</html>

@@ -3,6 +3,7 @@ import urlparse
 import sqlite3
 import time
 import json
+import os
 
 HOST = ''
 PORT = 9999
@@ -17,34 +18,42 @@ class CustomHTTPHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed_path = urlparse.urlparse(self.path)
         print 'Request ' + parsed_path.path
-        if not parsed_path.path == '/data':
-            return
-
-        self.send_response(200)
-        self.send_header('Content-type','application/json')
-        self.end_headers()
         content = ""
-        connection = sqlite3.connect(DATABASE_NAME)
-        cursor = connection.cursor()
+        if parsed_path.path == '/':
+            self.send_response(200)
+            self.send_header('Content-type','text/html')
+            self.end_headers()
+            with open('dashboard.html', 'r') as htmlFile:
+                data=htmlFile.read()
+            content = data
+        elif parsed_path.path == '/data':
+            self.send_response(200)
+            self.send_header('Content-type','application/json')
+            self.end_headers()
+            connection = sqlite3.connect(DATABASE_NAME)
+            cursor = connection.cursor()
 
-        devices = []
-        for row in cursor.execute ("SELECT * FROM devices"):
-            device = {}
-            device['device_name'] = row [0]
-            device['last_discovered'] = row[1]
-            devices.append(device)
+            devices = []
+            for row in cursor.execute ("SELECT * FROM devices"):
+                device = {}
+                device['device_name'] = row [0]
+                device['last_discovered'] = row[1]
+                devices.append(device)
 
-        timestamp = time.time() - (60 * 60 * 24)
-        for device in devices:
-            data_array = []
-            for row in cursor.execute ("SELECT * FROM insight WHERE date>=? and device_name=?", (timestamp,device['device_name'])):
-                data_point = {}
-                for i in range(len(PROPERTIES)):
-                    prop = PROPERTIES[i]
-                    data_point[prop] = row[i]
-                data_array.append(data_point)
-            device['data'] = data_array
-        content = json.dumps(devices)    
+            timestamp = time.time() - (60 * 60 * 24)
+            for device in devices:
+                data_array = []
+                for row in cursor.execute ("SELECT * FROM insight WHERE date>=? and device_name=? ORDER BY date DESC", (timestamp,device['device_name'])):
+                    data_point = {}
+                    for i in range(len(PROPERTIES)):
+                        prop = PROPERTIES[i]
+                        data_point[prop] = row[i]
+                    data_array.append(data_point)
+                device['data'] = data_array
+            content = json.dumps(devices)    
+        else:
+            self.send_response(404)
+            self.end_headers()
         self.wfile.write(content)
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ from ouimeaux.environment import Environment
 DATABASE_NAME = 'data.db'
 DEVICE_TABLE_NAME = 'devices'
 DATA_TABLE_NAME = 'insight'
-TIMER_QUERY = 60
+TIMER_QUERY = 30
 TIMER_DISCOVERY = 600
 DISCOVERY_TIME = 15
 sem = threading.Semaphore()
@@ -28,7 +28,7 @@ def check_devices():
     cursor = connection.cursor()
     timestamp = time.time()
     for device_name in devices:
-        print "Querying " + device_name
+        print "Querying " + device_name + "at " + str(timestamp)
         insight = env.get_switch(device_name)
         tkwh = insight.today_kwh
         cp = insight.current_power
@@ -38,6 +38,7 @@ def check_devices():
         tsbt = insight.today_standby_time
         ot = insight.ontotal
         tmw = insight.totalmw
+        print insight
         cursor.execute("INSERT INTO insight VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (device_name, tkwh, cp, tot, of, lc, tsbt, ot, tmw, timestamp))
     connection.commit()
     connection.close()
@@ -48,7 +49,7 @@ def check_devices():
 def discover_devices():
     sem.acquire()
     print 'Starting to run discovery job';
-    env.discover(seconds=DISCOVERY_TIME)
+    env.discover(seconds=10)
     env.list_switches()
     
     timer = threading.Timer(TIMER_DISCOVERY, discover_devices)
@@ -83,7 +84,7 @@ if not verify_table_exists(DEVICE_TABLE_NAME, c):
 conn.commit()
 conn.close()
 
-env = Environment(on_switch, on_motion)
+env = Environment(switch_callback=on_switch, motion_callback=on_motion, with_cache=False)
 env.start()
 discover_devices()
 initial_timer = threading.Timer(DISCOVERY_TIME, check_devices)
