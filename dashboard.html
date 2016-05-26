@@ -34,45 +34,47 @@ function createItem(name, data) {
     var content = document.createElement("div");
     var latestData = data[0];
     
-    var powerField = document.createElement("p");
-    powerField.innerHTML = "Current Power: " + Math.round((latestData['current_power'])/1000) + "W";
-    content.appendChild(powerField);
+    if (undefined != latestData) {    
+        var powerField = document.createElement("p");
+        powerField.innerHTML = "Current Power: " + Math.round((latestData['current_power'])/1000) + "W";
+        content.appendChild(powerField);
 
-    var todayWHField = document.createElement("p");
-    todayWHField.innerHTML = "Today Energy: " + Math.round(latestData['today_kwh']*1000) + "W-H";
-    content.appendChild(todayWHField);
+        var todayWHField = document.createElement("p");
+        todayWHField.innerHTML = "Today Energy: " + Math.round(latestData['today_kwh']*1000) + "W-H";
+        content.appendChild(todayWHField);
 
-    var dateField = document.createElement("p");
-    var dateInput = latestData['date'] * 1000;
-    var dateObject = new Date(dateInput);
-    dateField.innerHTML = "Last Updated: " + dateObject.toLocaleString();
-    content.appendChild(dateField);
+        var dateField = document.createElement("p");
+        var dateInput = latestData['date'] * 1000;
+        var dateObject = new Date(dateInput);
+        dateField.innerHTML = "Last Updated: " + dateObject.toLocaleString();
+        content.appendChild(dateField);
 
-    div.appendChild(content);
+        div.appendChild(content);
+    }
 
-    var toggleButton = document.createElement("button"); 
-    var buttonText = document.createTextNode("Show history"); 
-    toggleButton.appendChild(buttonText);
-    toggleButton.onclick = function(){toggleTable(name)};
-    div.appendChild(toggleButton);
-   
-    var table = document.createElement("table");
-    table.id = name
-    table.style.display = "table";
-    var tableHeader = document.createElement("tr");
-    
-    var powerHeader = document.createElement("th")
-    powerHeader.innerHTML = "(W)";
-    tableHeader.appendChild(powerHeader);
+	var toggleButton = document.createElement("button"); 
+	var buttonText = document.createTextNode("Show history"); 
+	toggleButton.appendChild(buttonText);
+	toggleButton.onclick = function(){toggleTable(name)};
+	div.appendChild(toggleButton);
 
-    var energyHeader = document.createElement("th")
-    energyHeader.innerHTML = "(W-H)";
-    tableHeader.appendChild(energyHeader);
+	var table = document.createElement("table");
+	table.id = name
+	table.style.display = "table";
+	var tableHeader = document.createElement("tr");
 
-    var dateHeader = document.createElement("th")
-    dateHeader.innerHTML = "Date";
-    tableHeader.appendChild(dateHeader);
+	var powerHeader = document.createElement("th")
+	powerHeader.innerHTML = "(W)";
+	tableHeader.appendChild(powerHeader);
 
+	var energyHeader = document.createElement("th")
+	energyHeader.innerHTML = "(W-H)";
+	tableHeader.appendChild(energyHeader);
+
+	var dateHeader = document.createElement("th")
+	dateHeader.innerHTML = "Date";
+	tableHeader.appendChild(dateHeader);
+	
     table.appendChild(tableHeader);
 
     for (i = 0; i < data.length; i++) { 

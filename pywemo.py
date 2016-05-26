@@ -1,4 +1,6 @@
+import sys,traceback
 import threading
+import datetime
 import sqlite3
 import time
 from ouimeaux.environment import Environment
@@ -28,18 +30,24 @@ def check_devices():
     cursor = connection.cursor()
     timestamp = time.time()
     for device_name in devices:
-        print "Querying " + device_name + "at " + str(timestamp)
-        insight = env.get_switch(device_name)
-        tkwh = insight.today_kwh
-        cp = insight.current_power
-        tot =  insight.today_on_time
-        of = insight.on_for
-        lc = insight.last_change
-        tsbt = insight.today_standby_time
-        ot = insight.ontotal
-        tmw = insight.totalmw
-        print insight
-        cursor.execute("INSERT INTO insight VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (device_name, tkwh, cp, tot, of, lc, tsbt, ot, tmw, timestamp))
+        print "Querying " + device_name + " at " + datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        try:
+            insight = env.get_switch(device_name)
+            tkwh = insight.today_kwh
+            cp = insight.current_power
+            tot =  insight.today_on_time
+            of = insight.on_for
+            lc = insight.last_change
+            tsbt = insight.today_standby_time
+            ot = insight.ontotal
+            tmw = insight.totalmw
+            cursor.execute("INSERT INTO insight VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (device_name, tkwh, cp, tot, of, lc, tsbt, ot, tmw, timestamp))
+            print 'Device data gathered'
+        except:
+            print 'Error connecting to WeMo'
+            print '-'*60
+            traceback.print_exc(file=sys.stdout)
+            print '-'*60
     connection.commit()
     connection.close()
     print 'Query job done'
@@ -89,4 +97,3 @@ env.start()
 discover_devices()
 initial_timer = threading.Timer(DISCOVERY_TIME, check_devices)
 initial_timer.start()
-
