@@ -1,66 +1,138 @@
-from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
-import urlparse
+import ConfigParser
+import datetime
+import importlib
+import sched
 import sqlite3
+import sys
+import threading
 import time
-import json
-import os
+import traceback
 
-HOST = ''
-PORT = 9999
-DATABASE_NAME = 'data.db'
-DEVICE_TABLE_NAME = 'devices'
-DATA_TABLE_NAME = 'insight'
+from modules import *
 
-PROPERTIES = ['device_name', 'today_kwh', 'current_power', 'today_on_time', 'on_for', 'last_change', 'today_standby_time', 'ontotal', 'totalmw', 'date']
+'''
+class SensorModule:
+    def __init__(self):
+        raise NotImplementedError
 
-class CustomHTTPHandler(BaseHTTPRequestHandler):
+    def trigger_device_discovery(self):
+        raise NotImplementedError
 
-    def do_GET(self):
-        parsed_path = urlparse.urlparse(self.path)
-        print 'Request ' + parsed_path.path
-        content = ""
-        if parsed_path.path == '/':
-            self.send_response(200)
-            self.send_header('Content-type','text/html')
-            self.end_headers()
-            with open('dashboard.html', 'r') as htmlFile:
-                data=htmlFile.read()
-            content = data
-        elif parsed_path.path == '/data':
-            self.send_response(200)
-            self.send_header('Content-type','application/json')
-            self.end_headers()
-            connection = sqlite3.connect(DATABASE_NAME)
-            cursor = connection.cursor()
+    def trigger_device_check(self):
+        raise NotImplementedError
 
-            devices = []
-            for row in cursor.execute ("SELECT * FROM devices"):
-                device = {}
-                device['device_name'] = row [0]
-                device['last_discovered'] = row[1]
-                devices.append(device)
+    @staticmethod
+    def module_name():
+        raise NotImplementedError
 
-            timestamp = time.time() - (60 * 60 * 24)
-            for device in devices:
-                data_array = []
-                for row in cursor.execute ("SELECT * FROM insight WHERE date>=? and device_name=? ORDER BY date DESC", (timestamp,device['device_name'])):
-                    data_point = {}
-                    for i in range(len(PROPERTIES)):
-                        prop = PROPERTIES[i]
-                        data_point[prop] = row[i]
-                    data_array.append(data_point)
-                device['data'] = data_array
-            content = json.dumps(devices)    
-        else:
-            self.send_response(404)
-            self.end_headers()
-        self.wfile.write(content)
+    @staticmethod
+    def discovery_timer():
+        raise NotImplementedError
 
-if __name__ == "__main__":
+    @staticmethod
+    def check_timer():
+        raise NotImplementedError
 
-    # Create the server, binding to localhost on port 9999
-    server = HTTPServer((HOST, PORT), CustomHTTPHandler)
+    @staticmethod
+    def data_format():
+        raise NotImplementedError
 
-    # Activate the server; this will keep running until you
-    # interrupt the program with Ctrl-C
-    server.serve_forever()
+    @staticmethod
+    def database_version():
+        raise NotImplementedError
+'''
+
+def check_devices(module):
+    sem.acquire()
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+    data = module.trigger_device_check()
+    module_name = module.__class__.__name__
+
+    for device in data:
+        db_format = module.data_format
+        db_command = "INSERT INTO " + module_name + " VALUES ("
+        for i in range(len(device)):
+            db_command += "?"
+            if not i == len(device) - 1:
+                db_command += ", "
+        db_command += ")"
+        print db_command
+        cursor.execute(db_command, device)
+    connection.commit()
+    connection.close()
+    sem.release()
+    callback = create_check_devices_callback(module)
+    threading.Timer(module.check_timer(), callback).start()
+
+def discover_devices(module):
+    sem.acquire()
+    devices = module.trigger_device_discovery()
+    
+    connection = sqlite3.connect(DATABASE_NAME)
+    cursor = connection.cursor()
+    module_name = module.__class__.__name__
+    for device in devices:
+        print "Found " + device[0]
+        cursor.execute("INSERT OR REPLACE INTO devices (device_name, module_name, last_discovered) VALUES (?,?,?)", (device[0], module_name, device[1]))
+    connection.commit()
+    connection.close()
+    sem.release()
+    callback = create_discover_devices_callback(module)
+    threading.Timer(module.discovery_timer(), callback).start()
+
+def handle_module(module_name):
+    somemodule = importlib.import_module('modules.' + module_name.lower())
+    print somemodule
+    targetClass = getattr(somemodule, module_name)
+    module = targetClass()
+
+    conn = sqlite3.connect(DATABASE_NAME)
+    c = conn.cursor()
+    classname = module_name
+    if not table_exists(classname, c):
+        db_format = "CREATE TABLE " + classname  + " ("
+        db_schema = module.data_format()
+        for i in range(len(db_schema)):
+            column = db_schema[i]
+            db_input = column[0] + " " + column[1]
+            db_format += db_input
+            if not i == len(db_schema) - 1:
+                db_format += ", "
+        db_format += ")"
+        c.execute(db_format)
+
+    if not table_exists(DATABASE_DEVICES_TABLE, c):
+        c.execute('CREATE TABLE ' + DATABASE_DEVICES_TABLE + ' (device_name text PRIMARY KEY, module_name text, last_discovered integer)')
+    conn.commit()
+
+    discover_devices(module)
+    callback = create_check_devices_callback(module)
+    threading.Timer(module.check_timer(), callback).start()
+
+def create_discover_devices_callback(module):
+    return lambda : discover_devices(module)
+
+def create_check_devices_callback(module):
+    return lambda : check_devices(module)
+
+def table_exists(table_name, cursor):
+    for row in cursor.execute ("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)):
+        return True
+    return False
+
+config = ConfigParser.RawConfigParser()
+config.read('sensor_station.cfg')
+
+DATABASE_NAME = config.get('Global', 'database_file_path')
+DATABASE_DEVICES_TABLE = config.get('Global', 'database_devices_table')
+MODULES = config.get('Global', 'modules').split(",")  
+
+scheduler = sched.scheduler(time.time, time.sleep)
+sem = threading.Semaphore()
+
+if isinstance(MODULES, list):
+    for module in MODULES:
+        handle_module(module)
+else:
+    handle_module(MODULES)
