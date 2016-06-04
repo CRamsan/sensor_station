@@ -50,6 +50,6 @@ Return an integer that defines how often should the server poll the devices.
 
 Return an integer that defines how often should the server check which devices are still online.
 
-data_format()
+`data_format()`
 
 Return an array with 2-tuple that define the format on which the data will be returned. The first element in the tuple is a column name and the second element is a SQLite data primitive, the most commonly used are `integer` and `string`.
