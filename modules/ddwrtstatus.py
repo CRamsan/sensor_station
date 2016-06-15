@@ -2,6 +2,7 @@ import base64
 import datetime
 import ssl
 import sys
+import re
 import time
 import traceback
 import urllib2
@@ -38,8 +39,8 @@ class DDWRTStatus(basemodule.SensorModule):
             up_traffic = 0
             down_traffic = 0
             page = self.make_request().read()
-            down_traffic = ''
-            data.append(('Router', page, down_traffic, timestamp))
+            parsed_data = re.findall(r'\{([^}]*)\}',page)
+            data.append(('Router', parsed_data[12], parsed_data[11], timestamp))
             print 'Device data gathered'
             
         except:

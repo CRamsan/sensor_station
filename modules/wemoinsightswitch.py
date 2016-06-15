@@ -1,6 +1,7 @@
 import datetime
 import time
 import traceback
+import sys
 
 from modules import basemodule
 from ouimeaux.environment import Environment

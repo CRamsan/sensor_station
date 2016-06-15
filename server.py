@@ -44,39 +44,51 @@ class SensorModule:
 
 def check_devices(module):
     sem.acquire()
-    connection = sqlite3.connect(DATABASE_NAME)
-    cursor = connection.cursor()
-    data = module.trigger_device_check()
-    module_name = module.__class__.__name__
+    try:
+        connection = sqlite3.connect(DATABASE_NAME)
+        cursor = connection.cursor()
+        data = module.trigger_device_check()
+        module_name = module.__class__.__name__
+        for device in data:
+            db_format = module.data_format
+            db_command = "INSERT INTO " + module_name + " VALUES ("
+            for i in range(len(device)):
+                db_command += "?"
+                if not i == len(device) - 1:
+                    db_command += ", "
+            db_command += ")"
+            print db_command
+            cursor.execute(db_command, device)
+        connection.commit()
+        connection.close()
+    except:
+        print 'Error triggering discovery for module ' + module.module_name()
+        print '-'*20
+        traceback.print_exc(file=sys.stdout)
+        print '-'*20
 
-    for device in data:
-        db_format = module.data_format
-        db_command = "INSERT INTO " + module_name + " VALUES ("
-        for i in range(len(device)):
-            db_command += "?"
-            if not i == len(device) - 1:
-                db_command += ", "
-        db_command += ")"
-        print db_command
-        cursor.execute(db_command, device)
-    connection.commit()
-    connection.close()
     sem.release()
     callback = create_check_devices_callback(module)
     threading.Timer(module.check_timer(), callback).start()
 
 def discover_devices(module):
     sem.acquire()
-    devices = module.trigger_device_discovery()
-    
-    connection = sqlite3.connect(DATABASE_NAME)
-    cursor = connection.cursor()
-    module_name = module.__class__.__name__
-    for device in devices:
-        print "Found " + device[0]
-        cursor.execute("INSERT OR REPLACE INTO devices (device_name, module_name, last_discovered) VALUES (?,?,?)", (device[0], module_name, device[1]))
-    connection.commit()
-    connection.close()
+    try:
+        devices = module.trigger_device_discovery()
+        connection = sqlite3.connect(DATABASE_NAME)
+        cursor = connection.cursor()
+        module_name = module.__class__.__name__
+        for device in devices:
+            print "Found " + device[0]
+            cursor.execute("INSERT OR REPLACE INTO devices (device_name, module_name, last_discovered) VALUES (?,?,?)", (device[0], module_name, device[1]))
+        connection.commit()
+        connection.close()
+    except:
+        print 'Error triggering discovery for module ' + module.module_name()
+        print '-'*20
+        traceback.print_exc(file=sys.stdout)
+        print '-'*20
+
     sem.release()
     callback = create_discover_devices_callback(module)
     threading.Timer(module.discovery_timer(), callback).start()
@@ -87,6 +99,7 @@ def handle_module(module_name):
     targetClass = getattr(somemodule, module_name)
     module = targetClass()
 
+    verify_module(module)
     conn = sqlite3.connect(DATABASE_NAME)
     c = conn.cursor()
     classname = module_name
@@ -120,6 +133,15 @@ def table_exists(table_name, cursor):
     for row in cursor.execute ("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)):
         return True
     return False
+
+def verify_module(module):
+    print 'Checking module'
+    print 'Name: ' + module.module_name()
+    print 'Discovery time interval: ' + str(module.discovery_timer())
+    print 'Check time interval: ' + str(module.check_timer())
+    print 'Data format: ' + str(module.data_format())
+    print 'Databaase version: ' + str(module.database_version())
+ 
 
 config = ConfigParser.RawConfigParser()
 config.read('sensor_station.cfg')
