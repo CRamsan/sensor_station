@@ -13,8 +13,8 @@ from requests.auth import HTTPBasicAuth
 class DDWRTStatus(basemodule.SensorModule):
     def __init__(self):
         self.routerip = 'https://192.168.0.1'
-        self.username = 'cramsan'
-        self.password = '?\'lPlWSia4*zrlE<mjf{'
+        self.username = 'admin'
+        self.password = 'password'
 
     def trigger_device_discovery(self):
         print 'Starting to run discovery job for ' + self.module_name()
