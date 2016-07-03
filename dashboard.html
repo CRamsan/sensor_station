@@ -15,21 +15,26 @@ p     {color:green;}
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.1.2/Chart.bundle.js"></script>
 <script>
-DATA_URL = "http://192.168.0.154:9999/data";
+DATA_URL = "http://192.168.0.52:9999/data";
 
 $(document).ready(function(){
     $.getJSON(DATA_URL, function(result){
         $.each(result, function(i, jsonObject){
             var deviceName = jsonObject['device_name'];
             var deviceData = jsonObject['data'];
-            if (deviceName.indexOf("WeMo") > -1)
+            var deviceType = jsonObject['table_name'];
+            if (deviceType.indexOf("WemoInsightSwitch") > -1)
             {
                 createWemoItem(deviceName, deviceData);
             }
-            else if (deviceName.indexOf("Router") > -1)
+            else if (deviceType.indexOf("DDWRTStatus") > -1)
             {
                 createRouterItem(deviceName, deviceData);
             }
+            else if(deviceType.indexOf("Thermometer") > -1)
+            {
+                createRPSensorItem(deviceName, deviceData);
+            }   
         });
     });
 });
@@ -150,7 +155,49 @@ function createRouterItem(name, data) {
     main.appendChild(div);
 }
 
+function createRPSensorItem(name, data) {
+    var div = document.createElement("div");
+    var headerName = document.createElement("h1");
+    headerName.innerHTML  = name;
+    div.appendChild(headerName);
 
+    var content = document.createElement("div");
+    var latestData = data[0];
+    
+	var toggleButton = document.createElement("button"); 
+	var buttonText = document.createTextNode("Show history"); 
+	toggleButton.appendChild(buttonText);
+	toggleButton.onclick = function(){toggleTable(name)};
+	div.appendChild(toggleButton);
+
+	var table = document.createElement("table");
+	table.id = name
+	table.style.display = "table";
+	var tableHeader = document.createElement("tr");
+
+	var powerHeader = document.createElement("th");
+	powerHeader.innerHTML = "Temperature";
+	tableHeader.appendChild(powerHeader);
+
+	var dateHeader = document.createElement("th")
+	dateHeader.innerHTML = "Date";
+	tableHeader.appendChild(dateHeader);
+	
+    table.appendChild(tableHeader);
+
+    for (i = 0; i < data.length; i++) { 
+        pointData = data[i];
+        var tableRow = document.createElement("tr");
+        tableRow.insertCell(0).innerHTML = (pointData['temperature']);
+        tableRow.insertCell(1).innerHTML = (new Date(pointData['date'] * 1000)).toLocaleString();
+        table.appendChild(tableRow);
+    }
+    div.appendChild(table);
+    div.setAttribute('class', 'w3-third');
+ 
+    var main = document.getElementById("main");
+    main.appendChild(div);
+}
 
 function toggleTable(tableId) {
     var myTable = document.getElementById(tableId);

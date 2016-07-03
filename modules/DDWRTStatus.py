@@ -12,44 +12,35 @@ from requests.auth import HTTPBasicAuth
 
 class DDWRTStatus(basemodule.SensorModule):
     def __init__(self):
-        self.routerip = 'https://192.168.0.1'
-        self.username = 'admin'
-        self.password = 'password'
-
+        self.routerip = ''
+        self.username = ''
+        self.password = ''
+                
     def trigger_device_discovery(self):
-        print 'Starting to run discovery job for ' + self.module_name()
         timestamp = time.time()
 
         data = []
         response = self.make_request()
         if response.code == 200:
-            print "Found router"
             data.append(('Router', timestamp))
-        print 'Discovery job done'
-        print ''
         return data
  
 
     def trigger_device_check(self):
-        print 'Starting to run query job for ' + self.module_name()
         data = [] 
         timestamp = time.time()
         try:
-            print "Querying router at " + datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
             up_traffic = 0
             down_traffic = 0
             page = self.make_request().read()
             parsed_data = re.findall(r'\{([^}]*)\}',page)
-            data.append(('Router', parsed_data[12], parsed_data[11], timestamp))
-            print 'Device data gathered'
+            data.append(('Router', parsed_data[12], parsed_data[11], parsed_data[4], parsed_data[13], timestamp))
             
         except:
-            print 'Error connecting to WeMo'
+            print 'Error connecting to the router'
             print '-'*20
             traceback.print_exc(file=sys.stdout)
             print '-'*20
-        print 'Query job done'
-        print ''
         return data
     
     def make_request(self):
@@ -61,20 +52,16 @@ class DDWRTStatus(basemodule.SensorModule):
         return result
 
     @staticmethod
-    def module_name():
-        return 'ddwrt_status'
-    
-    @staticmethod
     def discovery_timer():
         return 600
 
     @staticmethod
     def check_timer():
-        return 300
+        return 30
 
     @staticmethod
     def data_format():
-        return [('device_name', 'text'), ('up_traffic', 'text'), ('down_traffic', 'text'), ('date', 'integer')];
+        return [('device_name', 'text'), ('up_traffic', 'text'), ('down_traffic', 'text'), ('wan_ip_address', 'text'), ('uptime', 'text'), ('date', 'integer')];
 
     @staticmethod
     def database_version():

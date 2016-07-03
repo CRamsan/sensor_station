@@ -1,1 +1,1 @@
-__all__ = ["wemoinsightswitch", "basemodule","ddwrtstatus"]
+__all__ = ["WemoInsightSwitch", "basemodule","DDWRTStatus","Thermometer"]

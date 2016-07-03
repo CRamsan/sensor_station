@@ -9,10 +9,6 @@ class SensorModule:
         raise NotImplementedError
 
     @staticmethod
-    def module_name():
-        raise NotImplementedError
-
-    @staticmethod
     def discovery_timer():
         raise NotImplementedError
 

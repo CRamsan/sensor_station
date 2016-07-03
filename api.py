@@ -17,6 +17,7 @@ class CustomHTTPHandler(BaseHTTPRequestHandler):
         print 'Request ' + parsed_path.path
         content = ""
         if parsed_path.path == '/':
+            print "HTML request started"
             self.send_response(200)
             self.send_header('Content-type','text/html')
             self.end_headers()
@@ -24,21 +25,22 @@ class CustomHTTPHandler(BaseHTTPRequestHandler):
                 data=htmlFile.read()
             content = data
         elif parsed_path.path == '/data':
-            self.send_response(200)
-            self.send_header('Content-type','application/json')
-            self.end_headers()
+            print "API request started"
             connection = sqlite3.connect(DATABASE_NAME)
             cursor = connection.cursor()
             devices = [] 
+            print "Devices found:"
             for row in cursor.execute ("SELECT * FROM " + DEVICE_TABLE_NAME):
                 device = {}
                 device['table_name'] = row[1]
                 device['device_name'] = row [0]
                 device['last_discovered'] = row[2]
                 devices.append(device)
+                print device
 
             timestamp = time.time() - (60 * 60 * 24)
             for device in devices:
+                print "Retrieving data for " + device['device_name']
                 data_array = []
                 table_name = device['table_name']
                 for row in cursor.execute ("SELECT * FROM " + table_name + " WHERE date>=? and device_name=? ORDER BY date DESC", (timestamp,device['device_name'])):
@@ -49,11 +51,15 @@ class CustomHTTPHandler(BaseHTTPRequestHandler):
                         data_point[prop] = row[i]
                     data_array.append(data_point)
                 device['data'] = data_array
-                del device['table_name']
-            content = json.dumps(devices)    
-        else:
+            content = json.dumps(devices)   
+            self.send_response(200)
+            self.send_header('Content-type','application/json')
+            self.end_headers()
+        else: 
+            print "Unkown request"
             self.send_response(404)
             self.end_headers()
+        print "Request ended"
         self.wfile.write(content)
 
 if __name__ == "__main__":

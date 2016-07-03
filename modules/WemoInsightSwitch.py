@@ -13,7 +13,6 @@ class WemoInsightSwitch(basemodule.SensorModule):
         self.devices = []
 
     def trigger_device_discovery(self):
-        print 'Starting to run discovery job for ' + self.module_name()
         self.env.discover(seconds=10)
         self.env.list_switches()
         devices_found = self.env.list_switches()
@@ -22,22 +21,17 @@ class WemoInsightSwitch(basemodule.SensorModule):
         data = []
         self.devices = []
         for device_name in devices_found:
-            print "Found " + device_name
             data.append((device_name, timestamp))
             self.devices.append(device_name)
-        print 'Discovery job done'
-        print ''
         return data
  
 
     def trigger_device_check(self):
-        print 'Starting to run query job for ' + self.module_name()
         devices = self.devices
         data = [] 
         timestamp = time.time()
         for device_name in devices:
             try:
-                print "Querying " + device_name + " at " + datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
                 insight = self.env.get_switch(device_name)
                 tkwh = insight.today_kwh
                 cp = insight.current_power
@@ -48,27 +42,20 @@ class WemoInsightSwitch(basemodule.SensorModule):
                 ot = insight.ontotal
                 tmw = insight.totalmw
                 data.append((device_name, tkwh, cp, tot, of, lc, tsbt, ot, tmw, timestamp))
-                print 'Device data gathered'
             except:
                 print 'Error connecting to WeMo'
                 print '-'*20
                 traceback.print_exc(file=sys.stdout)
                 print '-'*20
-        print 'Query job done'
-        print ''
         return data
 
-    @staticmethod
-    def module_name():
-        return 'wemo_insight'
-    
     @staticmethod
     def discovery_timer():
         return 900
 
     @staticmethod
     def check_timer():
-        return 300
+        return 30
 
     @staticmethod
     def data_format():
